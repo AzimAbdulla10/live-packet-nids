@@ -31,6 +31,11 @@ class PacketCapture:
         Starts sniffing packets on the configured interface.
         Requires root privileges for socket access.
         """
+        import platform
+        if platform.system().lower() == "darwin":
+            from scapy.all import conf
+            conf.use_pcap = True
+
         log_info(f"Sniffing packets on interface: {INTERFACE}")
         log_info("Please ensure you run this command with 'sudo'. Press Ctrl+C to terminate.")
         
