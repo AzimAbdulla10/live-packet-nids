@@ -1,0 +1,24 @@
+# Local environment
+.python-env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database and logs
+network_ids/database/*.db
+network_ids/database/*.db-journal
+network_ids/database/*.db-wal
+*.pdf
+*.csv
+.system_generated/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets / local configs
+token.txt
+.env
