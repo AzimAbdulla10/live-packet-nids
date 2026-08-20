@@ -6,11 +6,10 @@ def test_detector_rules():
     detector = Detector()
     
     log_info("Testing Port Scan Detection Rule...")
-    # Generate 20 unique ports for IP 192.168.1.100 within 1 second
     src_ip = "192.168.1.100"
     now = time.time()
     
-    # We will feed 20 different ports
+    # Send 20 connections to 20 unique ports to trigger port scan alert
     for i in range(20):
         pkt = {
             "src_ip": src_ip,
@@ -25,9 +24,9 @@ def test_detector_rules():
         detector.process_packet(pkt)
         
     log_info("Testing SYN Flood Detection Rule...")
-    # Generate 101 SYN packets from IP 192.168.1.200 within 1 second (flags containing 'SYN')
     src_ip_flood = "192.168.1.200"
     now = time.time()
+    # Send 101 SYN packets to trigger syn flood alert
     for i in range(101):
         pkt = {
             "src_ip": src_ip_flood,

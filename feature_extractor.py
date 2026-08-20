@@ -5,19 +5,14 @@ from scapy.layers.inet6 import IPv6
 class FeatureExtractor:
     @staticmethod
     def extract_features(packet: Packet) -> dict:
-        """
-        Extracts key features from a Scapy packet and returns a dictionary.
-        Returns None if the packet does not contain IP or IPv6 layers.
-        """
+        # Pull out key packet details to feed into NIDS rules / future ML model
         features = {}
         
-        # Determine IP version and extract basic network layer details
         if IP in packet:
             ip_layer = packet[IP]
             features["src_ip"] = ip_layer.src
             features["dst_ip"] = ip_layer.dst
             features["length"] = len(packet)
-            # Scapy packet.time can be a float or decimal object; convert to float
             features["timestamp"] = float(packet.time)
         elif IPv6 in packet:
             ipv6_layer = packet[IPv6]
@@ -26,17 +21,16 @@ class FeatureExtractor:
             features["length"] = len(packet)
             features["timestamp"] = float(packet.time)
         else:
-            # Skip non-IP packets (e.g., ARP, STP) or extract minimal info
+            # Skip ARP, STP, etc.
             return None
 
-        # Extract transport layer details
         if TCP in packet:
             tcp_layer = packet[TCP]
             features["protocol"] = "TCP"
             features["src_port"] = int(tcp_layer.sport)
             features["dst_port"] = int(tcp_layer.dport)
             
-            # Map Scapy TCP flag abbreviations to full names
+            # Convert Scapy TCP flag characters to readable words
             flags_str = []
             raw_flags = str(tcp_layer.flags)
             if "S" in raw_flags:

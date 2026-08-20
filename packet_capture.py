@@ -5,33 +5,21 @@ from logger import log_info, log_packet
 
 class PacketCapture:
     def __init__(self, callback):
-        """
-        Initializes the packet capture module.
-        :param callback: Function to call on each extracted packet feature dictionary.
-        """
         self.callback = callback
 
     def _packet_handler(self, packet):
-        """
-        Callback handler called by Scapy for each captured packet.
-        """
         try:
             features = FeatureExtractor.extract_features(packet)
             if features:
-                # Print the packet to the terminal in the required readable format
                 log_packet(features)
-                # Forward to the detector for rule-based analysis
                 self.callback(features)
         except Exception:
-            # Silently ignore parsing issues to keep packet capture resilient
+            # Skip any malformed packets so the sniffer doesn't crash
             pass
 
     def start(self):
-        """
-        Starts sniffing packets on the configured interface.
-        Requires root privileges for socket access.
-        """
         import platform
+        # macOS has issues binding to lo0; use pcap to fix it
         if platform.system().lower() == "darwin":
             from scapy.all import conf
             conf.use_pcap = True
@@ -40,7 +28,7 @@ class PacketCapture:
         log_info("Please ensure you run this command with 'sudo'. Press Ctrl+C to terminate.")
         
         try:
-            # store=0 prevents memory leaks by not saving packet history in Scapy memory
+            # store=0 stops scapy from keeping all sniffed packets in RAM
             sniff(iface=INTERFACE, prn=self._packet_handler, store=0)
         except PermissionError:
             print("\n[ERROR] Permission Denied. Sniffing requires raw socket access.")

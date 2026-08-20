@@ -5,18 +5,15 @@ from scapy.all import IP, TCP, UDP, send
 from config import INTERFACE
 
 def generate_normal_traffic():
-    """
-    Generates normal traffic (DNS, HTTP, HTTPS, SSH) targeting localhost.
-    Sends 15 packets with minor random delays.
-    """
+    # Fire off 15 normal looking DNS/HTTP packets with some delays
     print(f"\n[INFO] Generating normal traffic on interface {INTERFACE}...")
     target_ip = "127.0.0.1"
     protocols = [
-        ("TCP", 80, "S"),    # HTTP connection start
-        ("TCP", 443, "A"),   # HTTPS ack
-        ("UDP", 53, None),   # DNS query
-        ("TCP", 22, "PA"),   # SSH push-ack
-        ("TCP", 80, "FA")    # HTTP fin-ack
+        ("TCP", 80, "S"),    # HTTP SYN
+        ("TCP", 443, "A"),   # HTTPS ACK
+        ("UDP", 53, None),   # DNS
+        ("TCP", 22, "PA"),   # SSH PSH-ACK
+        ("TCP", 80, "FA")    # HTTP FIN-ACK
     ]
     
     try:
@@ -41,10 +38,7 @@ def generate_normal_traffic():
         print(f"\n[ERROR] Simulation failed: {e}")
 
 def simulate_port_scan():
-    """
-    Simulates a port scan by sending SYN packets to 26 sequential ports in under 1 second.
-    This should trigger the Port Scan detection rule (>= 20 ports in 5 seconds).
-    """
+    # Connects to 26 ports in rapid succession to trigger the rule
     print(f"\n[INFO] Simulating port scan on interface {INTERFACE}...")
     target_ip = "127.0.0.1"
     start_port = 20
@@ -56,7 +50,7 @@ def simulate_port_scan():
             pkt = IP(src=target_ip, dst=target_ip)/TCP(sport=sport, dport=dport, flags="S")
             send(pkt, iface=INTERFACE, verbose=0)
             print(f"Scanned port {dport}")
-            time.sleep(0.01)  # fast scan rate
+            time.sleep(0.01)
             
         print("[INFO] Port scan simulation completed.")
     except PermissionError:
@@ -66,10 +60,7 @@ def simulate_port_scan():
         print(f"\n[ERROR] Simulation failed: {e}")
 
 def simulate_syn_flood():
-    """
-    Simulates a SYN flood by sending 120 SYN packets to port 80 in under 1 second.
-    This should trigger the SYN Flood detection rule (> 100 SYN packets in 3 seconds).
-    """
+    # Spams 120 SYN packets to port 80 to trigger the rule
     print(f"\n[INFO] Simulating SYN flood on interface {INTERFACE}...")
     target_ip = "127.0.0.1"
     packet_count = 120
@@ -81,7 +72,7 @@ def simulate_syn_flood():
             send(pkt, iface=INTERFACE, verbose=0)
             if (i + 1) % 20 == 0:
                 print(f"Sent {i+1}/{packet_count} SYN packets...")
-            time.sleep(0.005)  # rapid rate
+            time.sleep(0.005)
             
         print("[INFO] SYN flood simulation completed.")
     except PermissionError:

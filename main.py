@@ -9,14 +9,10 @@ def main():
     log_info("==================================================")
     log_info("Initializing NIDS components...")
     
-    # Initialize detector instance
     detector = Detector()
-    
-    # Initialize packet capture with detector callback
     sniffer = PacketCapture(callback=detector.process_packet)
     
     try:
-        # Start capture - this blocks indefinitely
         sniffer.start()
     except KeyboardInterrupt:
         print("")
