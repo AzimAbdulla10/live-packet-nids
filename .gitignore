@@ -8,9 +8,12 @@ __pycache__/
 *.pyd
 
 # Database and logs
-network_ids/database/*.db
-network_ids/database/*.db-journal
-network_ids/database/*.db-wal
+database/*.db
+database/*.db-journal
+database/*.db-wal
+*.db
+*.db-journal
+*.db-wal
 *.pdf
 *.csv
 .system_generated/
