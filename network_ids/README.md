@@ -2,10 +2,6 @@
 
 This project implements a Python-based Network Intrusion Detection System (NIDS) backend. It captures live network packets, extracts key connection features, and runs rule-based checks to flag common network attacks in real-time.
 
-> [!IMPORTANT]
-> **Project Completion Status: 40-45% Complete (Phase 1–4 Backend Core)**
-> This version comprises the foundational packet ingestion and signature detection logic. Future phases will integrate Machine Learning models (such as Random Forest, XGBoost, Autoencoders, or Isolation Forests), persistent databases, and a frontend monitoring dashboard (using Streamlit or Flask).
-
 ---
 
 ## Folder Structure
