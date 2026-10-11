@@ -5,15 +5,14 @@ from scapy.all import IP, TCP, UDP, send
 from config import INTERFACE
 
 def generate_normal_traffic():
-    # Fire off 15 normal looking DNS/HTTP packets with some delays
     print(f"\n[INFO] Generating normal traffic on interface {INTERFACE}...")
     target_ip = "127.0.0.1"
     protocols = [
-        ("TCP", 80, "S"),    # HTTP SYN
-        ("TCP", 443, "A"),   # HTTPS ACK
-        ("UDP", 53, None),   # DNS
-        ("TCP", 22, "PA"),   # SSH PSH-ACK
-        ("TCP", 80, "FA")    # HTTP FIN-ACK
+        ("TCP", 80, "S"),
+        ("TCP", 443, "A"),
+        ("UDP", 53, None),
+        ("TCP", 22, "PA"),
+        ("TCP", 80, "FA")
     ]
     
     try:
@@ -38,7 +37,6 @@ def generate_normal_traffic():
         print(f"\n[ERROR] Simulation failed: {e}")
 
 def simulate_port_scan():
-    # Connects to 26 ports in rapid succession to trigger the rule
     print(f"\n[INFO] Simulating port scan on interface {INTERFACE}...")
     target_ip = "127.0.0.1"
     start_port = 20
@@ -60,7 +58,6 @@ def simulate_port_scan():
         print(f"\n[ERROR] Simulation failed: {e}")
 
 def simulate_syn_flood():
-    # Spams 120 SYN packets to port 80 to trigger the rule
     print(f"\n[INFO] Simulating SYN flood on interface {INTERFACE}...")
     target_ip = "127.0.0.1"
     packet_count = 120
@@ -81,6 +78,40 @@ def simulate_syn_flood():
     except Exception as e:
         print(f"\n[ERROR] Simulation failed: {e}")
 
+def simulate_ddos():
+    print(f"\n[INFO] Simulating DDoS flood on interface {INTERFACE} (testing ML classifier)...")
+    target_ip = "127.0.0.1"
+    packet_count = 150
+    try:
+        for i in range(packet_count):
+            sport = random.randint(1024, 65535)
+            # Mixed TCP/UDP flood to port 80/443
+            if i % 2 == 0:
+                pkt = IP(src=target_ip, dst=target_ip)/TCP(sport=sport, dport=80, flags="S")
+            else:
+                pkt = IP(src=target_ip, dst=target_ip)/UDP(sport=sport, dport=443)
+            send(pkt, iface=INTERFACE, verbose=0)
+            if (i + 1) % 30 == 0:
+                print(f"Sent {i+1}/{packet_count} DDoS flood packets...")
+            time.sleep(0.003)
+        print("[INFO] DDoS flood simulation completed.")
+    except Exception as e:
+        print(f"\n[ERROR] Simulation failed: {e}")
+
+def simulate_anomaly():
+    print(f"\n[INFO] Simulating zero-day anomaly traffic on interface {INTERFACE}...")
+    target_ip = "127.0.0.1"
+    try:
+        # High entropy packet sizes to exotic unassigned high ports
+        for i in range(30):
+            exotic_port = random.randint(32000, 48000)
+            pkt = IP(src=target_ip, dst=target_ip)/TCP(sport=exotic_port, dport=exotic_port, flags="SEC")
+            send(pkt, iface=INTERFACE, verbose=0)
+            time.sleep(0.02)
+        print("[INFO] Anomaly simulation completed.")
+    except Exception as e:
+        print(f"\n[ERROR] Simulation failed: {e}")
+
 def main():
     print("==================================================")
     print("   Network IDS Traffic Simulator (localhost-only) ")
@@ -91,12 +122,14 @@ def main():
     print("1. Generate Normal Traffic")
     print("2. Simulate Port Scan (26 ports in <1s)")
     print("3. Simulate SYN Flood (120 SYN packets in <1s)")
-    print("4. Run All Simulations (Sequential with pauses)")
-    print("5. Exit")
+    print("4. Simulate DDoS Flood (150 packets, testing ML classifier)")
+    print("5. Simulate Zero-Day Anomaly (testing Isolation Forest)")
+    print("6. Run All Simulations (Sequential with pauses)")
+    print("7. Exit")
     print("==================================================")
     
     try:
-        choice = input("Select an option (1-5): ").strip()
+        choice = input("Select an option (1-7): ").strip()
         if choice == "1":
             generate_normal_traffic()
         elif choice == "2":
@@ -104,12 +137,18 @@ def main():
         elif choice == "3":
             simulate_syn_flood()
         elif choice == "4":
+            simulate_ddos()
+        elif choice == "5":
+            simulate_anomaly()
+        elif choice == "6":
             generate_normal_traffic()
             time.sleep(2)
             simulate_port_scan()
             time.sleep(2)
             simulate_syn_flood()
-        elif choice == "5":
+            time.sleep(2)
+            simulate_ddos()
+        elif choice == "7":
             print("Exiting simulator.")
             sys.exit(0)
         else:

@@ -8,13 +8,14 @@ COLOR_INFO = "\033[94m"      # Blue
 COLOR_PACKET = "\033[92m"    # Green
 COLOR_ALERT = "\033[93m"     # Yellow
 COLOR_CRITICAL = "\033[91m"  # Red
+COLOR_ML = "\033[95m"        # Magenta
+COLOR_ANOMALY = "\033[96m"   # Cyan
 
 def log_info(message: str):
     print(f"{COLOR_BOLD}{COLOR_INFO}[INFO]{COLOR_RESET} {message}")
     sys.stdout.flush()
 
 def log_packet(pkt_data: dict):
-    # Print out packet info in the requested terminal style
     time_str = datetime.fromtimestamp(pkt_data.get("timestamp", datetime.now().timestamp())).strftime("%H:%M:%S")
     protocol = pkt_data.get("protocol", "UNKNOWN")
     src = pkt_data.get("src_ip", "UNKNOWN")
@@ -36,7 +37,6 @@ def log_packet(pkt_data: dict):
     sys.stdout.flush()
 
 def log_alert(src_ip: str, ports: list):
-    # Format ports list to comma separated string
     ports_str = ",".join(map(str, sorted(ports)))
     print(f"\n{COLOR_BOLD}{COLOR_ALERT}[ALERT]")
     print("Possible Port Scan")
@@ -49,4 +49,20 @@ def log_critical(src_ip: str, syn_count: int):
     print("Possible SYN Flood")
     print(f"\nSource:\n{src_ip}")
     print(f"\nSYN Count:\n{syn_count}{COLOR_RESET}\n")
+    sys.stdout.flush()
+
+def log_ml_alert(attack_type: str, src_ip: str, confidence: float, details: str):
+    print(f"\n{COLOR_BOLD}{COLOR_ML}[ML-ALERT]")
+    print(f"Attack Detected by Random Forest: {attack_type.upper()}")
+    print(f"\nSource:\n{src_ip}")
+    print(f"\nConfidence:\n{confidence*100:.1f}%")
+    print(f"\nDetails:\n{details}{COLOR_RESET}\n")
+    sys.stdout.flush()
+
+def log_anomaly_alert(src_ip: str, score: float, details: str):
+    print(f"\n{COLOR_BOLD}{COLOR_ANOMALY}[ANOMALY-ALERT]")
+    print("Zero-Day Anomaly Detected by Isolation Forest")
+    print(f"\nSource:\n{src_ip}")
+    print(f"\nAnomaly Score:\n{score:.4f}")
+    print(f"\nDetails:\n{details}{COLOR_RESET}\n")
     sys.stdout.flush()

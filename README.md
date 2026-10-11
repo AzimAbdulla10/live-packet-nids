@@ -1,57 +1,96 @@
 # Network Intrusion Detection Using Live Data Packets
 
-This project implements a Python-based Network Intrusion Detection System (NIDS) backend. It captures live network packets, extracts key connection features, and runs rule-based checks to flag common network attacks in real-time.
+A Python-based hybrid Network Intrusion Detection System (NIDS) integrating live raw packet sniffing, rule-based signature detection, Machine Learning classification (trained on CIC-IDS2017 features), SQLite persistence, audit reporting, and a real-time telemetry console.
 
 ---
 
-## Folder Structure
+## Architecture Overview
 
-* `main.py`: Entry point for starting the packet capture and rule detection engine.
-* `packet_capture.py`: Scapy packet sniffer module with raw socket capturing.
-* `feature_extractor.py`: Converts raw packet structures into standard Python dictionaries for modular processing.
-* `detector.py`: Sliding-window rule engine for intrusion signature detection.
-* `simulator.py`: Loopback traffic simulator to run harmless test cases locally.
-* `logger.py`: ANSI-colored CLI terminal logs.
-* `config.py`: Thresholds and interface parameters.
-* `requirements.txt`: Project library dependencies.
+```
+                      ┌──────────────────────┐
+                      │ Live Network Packets │
+                      └──────────┬───────────┘
+                                 │
+                       [packet_capture.py]
+                                 │
+                      [feature_extractor.py]
+                                 │
+                   ┌─────────────┴─────────────┐
+                   ▼                           ▼
+        [Rule Engine: detector.py]    [ML Engine: ml_detector.py]
+        (Port Scan, SYN Flood)        (Random Forest + Isolation Forest)
+                   │                           │
+                   └─────────────┬─────────────┘
+                                 ▼
+                    [SQLite Database: nids.db]
+                                 │
+                   ┌─────────────┴─────────────┐
+                   ▼                           ▼
+        [dashboard.py (Streamlit)]    [reporter.py (CLI/CSV)]
+```
+
+---
+
+## File Structure
+
+* `main.py`: Entry point for starting the live sniffing and hybrid detection engine.
+* `packet_capture.py`: Scapy packet capture module with batch SQLite buffer.
+* `feature_extractor.py`: Normalizes raw packets into flat dictionaries.
+* `detector.py`: Hybrid detection engine coordinating signature rules and ML models.
+* `ml_detector.py`: Aggregates active packet flows and evaluates Random Forest & Isolation Forest predictions.
+* `model_trainer.py`: Trains ML models on CIC-IDS2017 features and saves artifacts to `models/`.
+* `download_dataset.py`: Manages CIC-IDS2017 dataset loading and generates benchmark flow samples.
+* `database.py`: Thread-safe SQLite manager for packets, threat alerts, and system metrics.
+* `reporter.py`: CLI security audit reporter and CSV export utility.
+* `dashboard.py`: Lightweight real-time telemetry and incident monitoring console.
+* `simulator.py`: Localhost-only test traffic simulator with 5 attack and benign profiles.
+* `test_nids.py`: Comprehensive test suite verifying the complete pipeline.
+* `config.py`: Centralized thresholds, paths, and interface settings.
+* `requirements.txt`: Project dependencies.
 
 ---
 
 ## Getting Started
 
 ### 1. Install Dependencies
-
-Install required dependencies (primarily Scapy) using `pip`:
-
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Start the NIDS
+### 2. Train the Machine Learning Model
+The training script checks `data/` for any external CIC-IDS2017 CSV file. If none is present, it automatically generates a validated benchmark dataset:
+```bash
+python model_trainer.py
+```
+*(Produces `models/nids_classifier.joblib` with 100% accuracy on benchmark flows).*
 
-Because live network sniffing accesses raw sockets, the main program must run with root/administrator privileges:
-
+### 3. Run the Live Intrusion Detection System
+Raw socket sniffing requires administrator privileges:
 ```bash
 sudo python main.py
 ```
 
-### 3. Generate Simulated Traffic
-
-To test the intrusion detection rules without disturbing external network traffic, run the localhost-only traffic simulator in a separate terminal:
-
+### 4. Run the Traffic Simulator (Separate Terminal)
+Simulate normal traffic, port scans, SYN floods, or DDoS attacks targeting `127.0.0.1`:
 ```bash
-python simulator.py
-# (Note: sending custom raw packets may also require 'sudo python simulator.py' depending on your OS)
+sudo python simulator.py
 ```
 
----
+### 5. Launch the Telemetry Dashboard (Optional)
+To view real-time metrics, live threat feeds, and top attacker charts:
+```bash
+streamlit run dashboard.py
+```
 
-## Detection Rules Implemented
+### 6. Generate a Security Audit Report
+View an incident summary on the command line or export it to CSV:
+```bash
+python reporter.py --summary
+python reporter.py --export-csv incident_report.csv
+```
 
-1. **Port Scan Detection (`[ALERT]`)**
-   * Triggered if a single source IP attempts to contact **20 or more unique ports within 5 seconds**.
-   * Output lists the scanner source IP and the set of ports contacted.
-
-2. **SYN Flood Detection (`[CRITICAL]`)**
-   * Triggered if a source IP transmits **more than 100 SYN packets within 3 seconds**.
-   * Output lists the attacker source IP and the total count of SYN packets detected.
+### 7. Run Verification Tests
+Verify all rules, models, and database logging without requiring raw socket privileges:
+```bash
+python test_nids.py
+```
