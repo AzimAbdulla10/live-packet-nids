@@ -16,6 +16,8 @@ database/*.db-wal
 *.db-wal
 *.pdf
 *.csv
+archive/
+data/
 .system_generated/
 
 # OS files
