@@ -68,17 +68,9 @@ A production-grade, hybrid Network Intrusion Detection System (NIDS) integrating
 * `database.py`: Thread-safe SQLite manager maintaining `packets`, `alerts`, `system_metrics`, and `flow_summaries` tables with indexing and deduplication constraints.
 * `model_trainer.py`: Trains Random Forest and Isolation Forest on official CIC-IDS2017 flows and serializes artifact bundle to `models/`.
 * `download_dataset.py`: Extracts balanced subsets of 30,000 real flows from Friday CIC-IDS2017 captures (`BENIGN`, `PortScan`, `DDoS`).
-* `evaluate_model.py`: Standalone validation script auditing classification metrics, confusion matrices, inference latency, and train/test leakage.
 * `reporter.py`: CLI security audit reporter with console summaries, alert CSV export, and flow summary CSV export.
 * `dashboard.py`: Streamlit telemetry console displaying KPI cards, attacker breakdowns, multi-engine incident feeds, and live flow summaries.
 * `simulator.py`: Test traffic simulator supporting raw localhost transmission and deterministic mock packet generation for normal, port scan, SYN flood, DDoS, and anomaly profiles.
-* `test_nids.py`: End-to-end integration test validating rules, ML inference, database persistence, and reporting.
-* `tests/`: Automated unit and end-to-end test suite (49 passing tests):
-  * `tests/test_backend.py`: Packet parsing, flag bitmasks, IPv4/IPv6, ICMP, and rule sliding windows.
-  * `tests/test_flow_tracker.py`: Bidirectionality, direction counts, Welford duration/IAT, LRU bounds, and CIC-IDS2017 feature schema.
-  * `tests/test_ml_integration.py`: Supervised classification, anomaly detection, rate sanitization, and fallback handling.
-  * `tests/test_threat_decision.py`: Correlation windows, multi-engine corroboration, disagreement tracking, and SQLite persistence.
-  * `tests/test_end_to_end.py`: Full live pipeline integration, malformed packet resilience, and throughput verification.
 * `config.py`: Centralized thresholds, windows, database paths, and model configurations.
 
 ---
@@ -115,33 +107,19 @@ PortScan                  1            0         1999
 pip install -r requirements.txt
 ```
 
-### 2. Verify or Train the Machine Learning Model
-To evaluate the serialized model against held-out benchmark data:
-```bash
-python evaluate_model.py
-```
-To retrain the Random Forest and Isolation Forest models from scratch:
+### 2. Retrain the Machine Learning Model (Optional)
+The pre-trained model bundle is already serialized at `models/nids_classifier.joblib`. To retrain the Random Forest and Isolation Forest models from scratch:
 ```bash
 python model_trainer.py
 ```
 
-### 3. Run Verification Test Suite
-Run all 49 automated unit and end-to-end integration tests:
-```bash
-python test_nids.py
-```
-Or run directly via `unittest`:
-```bash
-python -m unittest discover -s tests -p "test_*.py" -v
-```
-
-### 4. Run the Live Intrusion Detection System
+### 3. Run the Live Intrusion Detection System
 Raw socket sniffing requires raw socket privileges:
 ```bash
 sudo python main.py
 ```
 
-### 5. Run the Traffic Simulator
+### 4. Run the Traffic Simulator
 Simulate attack and benign traffic on localhost (`127.0.0.1`):
 ```bash
 # Interactive menu:
@@ -158,13 +136,13 @@ sudo python simulator.py --attack anomaly
 python simulator.py --dry-run --attack portscan
 ```
 
-### 6. Launch the Security Telemetry Console
+### 5. Launch the Security Telemetry Console
 Start the Streamlit dashboard in a separate terminal:
 ```bash
 streamlit run dashboard.py
 ```
 
-### 7. Generate Security Audit Reports
+### 6. Generate Security Audit Reports
 View real-time database summaries and export audit reports:
 ```bash
 # Display summary in terminal:
