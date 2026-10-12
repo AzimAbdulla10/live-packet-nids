@@ -3,8 +3,7 @@ import time
 import sqlite3
 from unittest.mock import patch, MagicMock
 
-from threat_decision import ThreatDecisionEngine, DetectionEvent, Incident
-from flow_tracker import Flow, FlowTracker
+from threat_decision import ThreatDecisionEngine, DetectionEvent
 from database import DatabaseManager, db
 from detector import Detector
 

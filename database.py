@@ -1,6 +1,6 @@
 import sqlite3
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from config import DB_PATH
 
 class DatabaseManager:

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Any, Optional, Tuple, Set
 
-from config import MODEL_PATH, FLOW_WINDOW, ANOMALY_THRESHOLD
+from config import MODEL_PATH, ANOMALY_THRESHOLD
 from flow_tracker import Flow
 
 class MLDetector:

@@ -1,6 +1,6 @@
 import unittest
 import time
-from flow_tracker import FlowTracker, Flow, make_canonical_flow_key
+from flow_tracker import FlowTracker
 
 class TestFlowTracker(unittest.TestCase):
     def setUp(self):

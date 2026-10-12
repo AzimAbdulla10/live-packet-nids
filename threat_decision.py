@@ -1,9 +1,6 @@
-import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List, Tuple
-
-from config import PORT_SCAN_WINDOW, SYN_FLOOD_WINDOW
 
 # Severity rank order for severity escalation
 SEVERITY_ORDER = {

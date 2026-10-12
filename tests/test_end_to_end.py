@@ -2,12 +2,9 @@ import unittest
 import time
 import os
 import tempfile
-import sqlite3
-
 from database import DatabaseManager
 from detector import Detector
 from simulator import generate_mock_packets
-from threat_decision import DetectionEvent
 from reporter import generate_text_summary, export_alerts_csv, export_flows_csv
 
 class TestEndToEndPipeline(unittest.TestCase):

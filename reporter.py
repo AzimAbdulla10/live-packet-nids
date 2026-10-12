@@ -2,7 +2,6 @@ import sys
 import argparse
 import csv
 from datetime import datetime
-import pandas as pd
 from database import db
 from config import DB_PATH
 

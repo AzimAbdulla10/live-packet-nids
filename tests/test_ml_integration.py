@@ -2,9 +2,7 @@ import unittest
 import time
 import numpy as np
 import pandas as pd
-from unittest.mock import MagicMock
-
-from flow_tracker import Flow, FlowTracker
+from flow_tracker import Flow
 from ml_detector import MLDetector
 from detector import Detector
 

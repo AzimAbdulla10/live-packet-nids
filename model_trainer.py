@@ -1,5 +1,4 @@
 import os
-import sys
 import joblib
 import numpy as np
 import pandas as pd
@@ -8,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier, IsolationForest
 from sklearn.metrics import classification_report, accuracy_score
 
-from config import DATA_DIR, MODEL_DIR, MODEL_PATH
+from config import MODEL_DIR, MODEL_PATH
 from download_dataset import find_existing_cicids_csv, generate_cicids_benchmark_dataset
 
 # Normalized canonical feature list to extract from any CIC-IDS2017 CSV
