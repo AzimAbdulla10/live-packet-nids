@@ -16,6 +16,8 @@ def main():
         sniffer.start()
     except KeyboardInterrupt:
         print("")
+        log_info("Flushing and finalizing active flows...")
+        detector.finalize_flows()
         log_info("NIDS shut down by user. Exiting...")
         sys.exit(0)
 

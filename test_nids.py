@@ -65,6 +65,8 @@ def test_full_pipeline():
         db.insert_packet(pkt)
         detector.process_packet(pkt)
 
+    detector.finalize_flows()
+
     # 4. Verify Database Records & Report Generation
     log_info("4. Verifying Database Storage & Audit Report Generation...")
     stats = db.get_stats()
@@ -73,10 +75,12 @@ def test_full_pipeline():
     print(f"Total Alerts in SQLite:   {stats['total_alerts']}")
     print(f"Rule Alerts:              {stats['rule_alerts']}")
     print(f"ML Alerts:                {stats['ml_alerts']}")
+    print(f"Total Flows in SQLite:    {stats.get('total_flows', 0)}")
 
     assert stats["total_packets"] > 0, "Error: Packets were not recorded in database"
     assert stats["total_alerts"] > 0, "Error: Alerts were not recorded in database"
     assert stats["ml_alerts"] > 0, "Error: ML alerts were not recorded in database"
+    assert stats.get("total_flows", 0) > 0, "Error: Flows were not recorded in database"
 
     report_text = generate_text_summary()
     assert "NETWORK INTRUSION DETECTION SYSTEM - AUDIT REPORT" in report_text

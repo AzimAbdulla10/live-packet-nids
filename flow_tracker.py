@@ -168,6 +168,7 @@ class Flow:
         self.fwd_syn_count: int = 0
         self.bwd_syn_count: int = 0
         self.pure_syn_count: int = 0  # SYN flag set without ACK
+        self.finalization_reason: str = "active"
 
         # Ingestion of the first packet
         self.update(first_packet)
@@ -365,7 +366,8 @@ class Flow:
             "cwr_count": self.cwr_count,
             "fwd_syn_count": self.fwd_syn_count,
             "bwd_syn_count": self.bwd_syn_count,
-            "pure_syn_count": self.pure_syn_count
+            "pure_syn_count": self.pure_syn_count,
+            "finalization_reason": self.finalization_reason
         }
 
     def to_model_features(self) -> Dict[str, Any]:
@@ -436,9 +438,15 @@ class FlowTracker:
         if key in self.active_flows:
             flow = self.active_flows[key]
             # Check if this flow itself has exceeded idle or active timeout before updating
-            if (curr_time - flow.last_seen > self.idle_timeout) or \
-               (curr_time - flow.start_time > self.active_timeout):
-                # Finalize existing flow and start new flow instance
+            if curr_time - flow.last_seen > self.idle_timeout:
+                flow.finalization_reason = "idle_timeout"
+                expired.append(flow)
+                self.total_flows_expired += 1
+                flow = Flow(pkt)
+                self.active_flows[key] = flow
+                self.total_flows_created += 1
+            elif curr_time - flow.start_time > self.active_timeout:
+                flow.finalization_reason = "active_timeout"
                 expired.append(flow)
                 self.total_flows_expired += 1
                 flow = Flow(pkt)
@@ -451,6 +459,7 @@ class FlowTracker:
             # Memory bounding: Evict least recently updated flow if table is full
             if len(self.active_flows) >= self.max_flows:
                 oldest_key, oldest_flow = self.active_flows.popitem(last=False)
+                oldest_flow.finalization_reason = "table_eviction"
                 expired.append(oldest_flow)
                 self.total_flows_expired += 1
 
@@ -483,14 +492,14 @@ class FlowTracker:
         # Since OrderedDict is ordered by access time, we check oldest entries first
         keys_to_remove = []
         for key, flow in self.active_flows.items():
-            if (current_time - flow.last_seen >= self.idle_timeout) or \
-               (current_time - flow.start_time >= self.active_timeout):
+            if current_time - flow.last_seen >= self.idle_timeout:
+                flow.finalization_reason = "idle_timeout"
                 keys_to_remove.append(key)
                 expired.append(flow)
-            else:
-                # If we encounter flows that haven't hit the idle timeout, we continue
-                # checking because active_timeout might still trigger on older flows.
-                pass
+            elif current_time - flow.start_time >= self.active_timeout:
+                flow.finalization_reason = "active_timeout"
+                keys_to_remove.append(key)
+                expired.append(flow)
 
         for k in keys_to_remove:
             self.active_flows.pop(k, None)
