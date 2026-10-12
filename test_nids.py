@@ -51,19 +51,32 @@ def test_full_pipeline():
     log_info("3. Testing Machine Learning Classifier (Random Forest)...")
     ml_attack_ip = "10.0.0.99"
     now = time.time()
-    for i in range(100):
+    for i in range(10):
         pkt = {
             "src_ip": ml_attack_ip,
             "dst_ip": "127.0.0.1",
             "protocol": "TCP",
-            "src_port": 30000 + i,
+            "src_port": 30000,
             "dst_port": 80,
-            "length": 64,
-            "flags": "SYN",
-            "timestamp": now + (i * 0.005)
+            "length": 6,
+            "flags": "ACK",
+            "timestamp": now + (i * 0.1)
         }
         db.insert_packet(pkt)
         detector.process_packet(pkt)
+
+    resp_pkt = {
+        "src_ip": "127.0.0.1",
+        "dst_ip": ml_attack_ip,
+        "protocol": "TCP",
+        "src_port": 80,
+        "dst_port": 30000,
+        "length": 1000,
+        "flags": "ACK",
+        "timestamp": now + 1.2
+    }
+    db.insert_packet(resp_pkt)
+    detector.process_packet(resp_pkt)
 
     detector.finalize_flows()
 

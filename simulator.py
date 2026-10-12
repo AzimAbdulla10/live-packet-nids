@@ -112,7 +112,134 @@ def simulate_anomaly():
     except Exception as e:
         print(f"\n[ERROR] Simulation failed: {e}")
 
+def generate_mock_packets(attack_type: str, count: int = None, base_time: float = None) -> list:
+    """
+    Generates deterministic packet feature dictionaries for offline pipeline validation,
+    unit testing, and benchmarking without requiring raw network sockets.
+    """
+    if base_time is None:
+        base_time = time.time()
+    
+    packets = []
+    if attack_type == "normal":
+        n = count or 20
+        protocols = [("TCP", 80, "S"), ("TCP", 443, "A"), ("UDP", 53, ""), ("TCP", 22, "PA")]
+        for i in range(n):
+            proto, port, flags = protocols[i % len(protocols)]
+            packets.append({
+                "src_ip": "192.168.1.10",
+                "dst_ip": "192.168.1.1",
+                "protocol": proto,
+                "src_port": 50000 + (i % 5),
+                "dst_port": port,
+                "length": 64 + (i * 4),
+                "flags": flags,
+                "timestamp": base_time + (i * 0.1)
+            })
+    elif attack_type == "portscan":
+        n = count or 25
+        for i in range(n):
+            packets.append({
+                "src_ip": "192.168.1.150",
+                "dst_ip": "10.0.0.1",
+                "protocol": "TCP",
+                "src_port": 45000,
+                "dst_port": 1000 + i,
+                "length": 60,
+                "flags": "SYN",
+                "timestamp": base_time + (i * 0.02)
+            })
+    elif attack_type == "synflood":
+        n = count or 110
+        for i in range(n):
+            packets.append({
+                "src_ip": "192.168.1.250",
+                "dst_ip": "10.0.0.1",
+                "protocol": "TCP",
+                "src_port": 20000 + (i % 30),
+                "dst_port": 80,
+                "length": 64,
+                "flags": "SYN",
+                "timestamp": base_time + (i * 0.01)
+            })
+    elif attack_type == "ddos":
+        n = count or 10
+        for i in range(n):
+            packets.append({
+                "src_ip": "10.0.0.99",
+                "dst_ip": "127.0.0.1",
+                "protocol": "TCP",
+                "src_port": 30000,
+                "dst_port": 80,
+                "length": 6,
+                "flags": "ACK",
+                "timestamp": base_time + (i * 0.1)
+            })
+        packets.append({
+            "src_ip": "127.0.0.1",
+            "dst_ip": "10.0.0.99",
+            "protocol": "TCP",
+            "src_port": 80,
+            "dst_port": 30000,
+            "length": 1000,
+            "flags": "ACK",
+            "timestamp": base_time + (n * 0.1) + 0.1
+        })
+    elif attack_type == "anomaly":
+        n = count or 50
+        for i in range(n):
+            packets.append({
+                "src_ip": "192.168.1.250",
+                "dst_ip": "10.0.0.1",
+                "protocol": "TCP",
+                "src_port": 9999,
+                "dst_port": 31337,
+                "length": 1400,
+                "flags": "PSH,URG",
+                "timestamp": base_time + (i * 0.01)
+            })
+    return packets
+
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="NIDS Traffic Simulator")
+    parser.add_argument("--attack", choices=["normal", "portscan", "synflood", "ddos", "anomaly", "all"],
+                        help="Specific attack type to simulate")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Generate mock packets without transmitting on raw socket")
+    args = parser.parse_args()
+
+    if args.dry_run:
+        attack = args.attack or "normal"
+        pkts = generate_mock_packets(attack)
+        print(f"[INFO] Dry-run generated {len(pkts)} mock packets for '{attack}'.")
+        for p in pkts[:5]:
+            print(" ", p)
+        return
+
+    if args.attack:
+        if args.attack == "normal":
+            generate_normal_traffic()
+        elif args.attack == "portscan":
+            simulate_port_scan()
+        elif args.attack == "synflood":
+            simulate_syn_flood()
+        elif args.attack == "ddos":
+            simulate_ddos()
+        elif args.attack == "anomaly":
+            simulate_anomaly()
+        elif args.attack == "all":
+            generate_normal_traffic()
+            time.sleep(1)
+            simulate_port_scan()
+            time.sleep(1)
+            simulate_syn_flood()
+            time.sleep(1)
+            simulate_ddos()
+            time.sleep(1)
+            simulate_anomaly()
+        return
+
     print("==================================================")
     print("   Network IDS Traffic Simulator (localhost-only) ")
     print("==================================================")
@@ -148,6 +275,8 @@ def main():
             simulate_syn_flood()
             time.sleep(2)
             simulate_ddos()
+            time.sleep(2)
+            simulate_anomaly()
         elif choice == "7":
             print("Exiting simulator.")
             sys.exit(0)

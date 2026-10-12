@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, deque
 from typing import Tuple, Optional, List, Dict, Any
 import time
 
@@ -16,9 +16,10 @@ from database import db
 
 class Detector:
     def __init__(self):
-        # Sliding-window packet histories for rule-based engine
-        self.port_scan_history = defaultdict(list)
-        self.syn_flood_history = defaultdict(list)
+        # Sliding-window packet histories for rule-based engine using deque for O(1) pops
+        self.port_scan_history = defaultdict(deque)
+        self.port_scan_counts = defaultdict(lambda: defaultdict(int))
+        self.syn_flood_history = defaultdict(deque)
         
         # Cooldown trackers to avoid alert spamming
         self.last_port_scan_alert = {}
@@ -164,19 +165,22 @@ class Detector:
         if dst_port is None or protocol not in ("TCP", "UDP"):
             return
             
-        self.port_scan_history[src_ip].append((current_time, dst_port))
+        history = self.port_scan_history[src_ip]
+        counts = self.port_scan_counts[src_ip]
+        history.append((current_time, dst_port))
+        counts[dst_port] += 1
         
         cutoff = current_time - PORT_SCAN_WINDOW
-        self.port_scan_history[src_ip] = [
-            (t, p) for t, p in self.port_scan_history[src_ip] if t >= cutoff
-        ]
+        while history and history[0][0] < cutoff:
+            _, old_port = history.popleft()
+            counts[old_port] -= 1
+            if counts[old_port] <= 0:
+                del counts[old_port]
         
-        unique_ports = {p for _, p in self.port_scan_history[src_ip]}
-        
-        if len(unique_ports) >= PORT_SCAN_THRESHOLD:
+        if len(counts) >= PORT_SCAN_THRESHOLD:
             last_alert = self.last_port_scan_alert.get(src_ip, 0.0)
             if current_time - last_alert >= PORT_SCAN_WINDOW:
-                ports_list = list(unique_ports)
+                ports_list = list(counts.keys())
                 self.last_port_scan_alert[src_ip] = current_time
                 event = DetectionEvent(
                     timestamp=current_time,
@@ -197,14 +201,14 @@ class Detector:
             
         flags = pkt_data.get("flags", "")
         if "SYN" in flags and "ACK" not in flags:
-            self.syn_flood_history[src_ip].append(current_time)
+            history = self.syn_flood_history[src_ip]
+            history.append(current_time)
             
             cutoff = current_time - SYN_FLOOD_WINDOW
-            self.syn_flood_history[src_ip] = [
-                t for t in self.syn_flood_history[src_ip] if t >= cutoff
-            ]
+            while history and history[0] < cutoff:
+                history.popleft()
             
-            syn_count = len(self.syn_flood_history[src_ip])
+            syn_count = len(history)
             if syn_count > SYN_FLOOD_THRESHOLD:
                 last_alert = self.last_syn_flood_alert.get(src_ip, 0.0)
                 if current_time - last_alert >= SYN_FLOOD_WINDOW:

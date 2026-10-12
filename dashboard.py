@@ -41,7 +41,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.subheader("Incident Export")
+    st.subheader("Data Export")
     alerts_data = db.get_recent_alerts(limit=5000)
     if alerts_data:
         df_export = pd.DataFrame(alerts_data)
@@ -52,16 +52,27 @@ with st.sidebar:
             file_name=f"nids_audit_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv"
         )
+    flows_data = db.get_recent_flows(limit=5000)
+    if flows_data:
+        df_flows_export = pd.DataFrame(flows_data)
+        csv_flows = df_flows_export.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Download Flow Summaries CSV",
+            data=csv_flows,
+            file_name=f"nids_flows_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv"
+        )
 
 # Fetch stats from SQLite
 stats = db.get_stats()
 
 # KPI Metrics Row
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("Packets Analyzed", f"{stats['total_packets']:,}")
 col2.metric("Total Alerts", f"{stats['total_alerts']:,}")
-col3.metric("Signature Rule Alerts", f"{stats['rule_alerts']:,}")
+col3.metric("Rule Alerts", f"{stats['rule_alerts']:,}")
 col4.metric("ML Threat Detections", f"{stats['ml_alerts']:,}")
+col5.metric("Flows Tracked", f"{stats.get('total_flows', 0):,}")
 
 st.markdown("---")
 
@@ -97,7 +108,7 @@ if recent_alerts:
     df_alerts = pd.DataFrame(recent_alerts)
     df_alerts["Time"] = df_alerts["timestamp"].apply(lambda t: datetime.fromtimestamp(t).strftime("%H:%M:%S"))
     
-    filter_engine = st.selectbox("Filter by Engine", ["All", "RULE", "ML"])
+    filter_engine = st.selectbox("Filter by Engine", ["All", "RULE", "ML", "ANOMALY", "HYBRID"])
     if filter_engine != "All":
         df_alerts = df_alerts[df_alerts["engine"] == filter_engine]
 
@@ -111,10 +122,40 @@ if recent_alerts:
             "details": "Details"
         }),
         use_container_width=True,
-        height=320
+        height=300
     )
 else:
     st.write("No incidents currently logged. Monitoring network interface...")
+
+st.markdown("---")
+
+# Network Flow Summaries Table
+st.subheader("Network Flow Summaries")
+recent_flows = db.get_recent_flows(limit=50)
+
+if recent_flows:
+    df_flows = pd.DataFrame(recent_flows)
+    df_flows["Start Time"] = df_flows["start_time"].apply(lambda t: datetime.fromtimestamp(t).strftime("%H:%M:%S") if t else "-")
+    df_flows["Duration (s)"] = df_flows["duration"].apply(lambda d: f"{d:.2f}" if d is not None else "0.00")
+    
+    flow_cols = ["Start Time", "protocol", "initiator_ip", "responder_ip", "initiator_port", "responder_port", "total_packets", "total_bytes", "Duration (s)", "finalization_reason"]
+    display_flow_cols = [c for c in flow_cols if c in df_flows.columns]
+    st.dataframe(
+        df_flows[display_flow_cols].rename(columns={
+            "protocol": "Protocol",
+            "initiator_ip": "Initiator IP",
+            "responder_ip": "Responder IP",
+            "initiator_port": "Src Port",
+            "responder_port": "Dst Port",
+            "total_packets": "Packets",
+            "total_bytes": "Bytes",
+            "finalization_reason": "Reason"
+        }),
+        use_container_width=True,
+        height=280
+    )
+else:
+    st.write("No flow summaries recorded yet. Flows will appear upon finalization or timeout.")
 
 # Auto refresh loop
 if auto_refresh:

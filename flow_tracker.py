@@ -105,8 +105,14 @@ def make_canonical_flow_key(
         return None
     proto = str(protocol).upper() if protocol else "OTHER"
     
-    p1 = int(src_port) if src_port is not None else -1
-    p2 = int(dst_port) if dst_port is not None else -1
+    try:
+        p1 = int(src_port) if src_port is not None else -1
+    except (ValueError, TypeError):
+        p1 = -1
+    try:
+        p2 = int(dst_port) if dst_port is not None else -1
+    except (ValueError, TypeError):
+        p2 = -1
 
     ep1 = (str(src_ip), p1)
     ep2 = (str(dst_ip), p2)
@@ -128,8 +134,14 @@ class Flow:
         
         raw_sp = first_packet.get("src_port")
         raw_dp = first_packet.get("dst_port")
-        self.initiator_port: Optional[int] = int(raw_sp) if raw_sp is not None else None
-        self.responder_port: Optional[int] = int(raw_dp) if raw_dp is not None else None
+        try:
+            self.initiator_port: Optional[int] = int(raw_sp) if raw_sp is not None else None
+        except (ValueError, TypeError):
+            self.initiator_port = None
+        try:
+            self.responder_port: Optional[int] = int(raw_dp) if raw_dp is not None else None
+        except (ValueError, TypeError):
+            self.responder_port = None
         
         self.protocol: str = str(first_packet.get("protocol", "OTHER")).upper()
         
@@ -231,7 +243,10 @@ class Flow:
         dst_ip = str(pkt.get("dst_ip", ""))
         
         raw_sp = pkt.get("src_port")
-        src_port = int(raw_sp) if raw_sp is not None else None
+        try:
+            src_port = int(raw_sp) if raw_sp is not None else None
+        except (ValueError, TypeError):
+            src_port = None
 
         if self.initiator_port is not None and self.responder_port is not None:
             if src_ip == self.initiator_ip and src_port == self.initiator_port:
@@ -409,6 +424,7 @@ class FlowTracker:
         self.active_flows: OrderedDict[Tuple, Flow] = OrderedDict()
         self.total_flows_created: int = 0
         self.total_flows_expired: int = 0
+        self._last_expire_check: float = 0.0
 
     def process_packet(self, pkt: Dict[str, Any]) -> Tuple[Optional[Flow], List[Flow]]:
         """
@@ -432,8 +448,11 @@ class FlowTracker:
 
         curr_time = float(pkt.get("timestamp", time.time()))
 
-        # Check and expire stale flows periodically
-        expired = self.expire_stale_flows(curr_time)
+        # Check and expire stale flows periodically or when table is near capacity
+        expired = []
+        if (curr_time - self._last_expire_check >= 0.5) or (len(self.active_flows) >= self.max_flows):
+            expired = self.expire_stale_flows(curr_time)
+            self._last_expire_check = curr_time
 
         if key in self.active_flows:
             flow = self.active_flows[key]

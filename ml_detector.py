@@ -40,6 +40,10 @@ class MLDetector:
                 self.scaler = bundle.get("scaler")
                 self.feature_names = bundle.get("features")
                 self.classes = bundle.get("classes")
+                if self.rf_model is not None:
+                    self.rf_model.n_jobs = 1
+                if self.isolation_forest is not None:
+                    self.isolation_forest.n_jobs = 1
                 return True
             except Exception as e:
                 print(f"[WARN] Failed to load ML model from {self.model_path}: {e}")
@@ -113,11 +117,13 @@ class MLDetector:
         except Exception as e:
             return None
 
-        # 4. Supervised ML classification
+        # 4. Supervised ML classification (single pass for class and confidence)
         try:
-            prediction = self.rf_model.predict(X_scaled)[0]
             probabilities = self.rf_model.predict_proba(X_scaled)[0]
-            confidence = float(np.max(probabilities))
+            pred_idx = int(np.argmax(probabilities))
+            classes_list = self.classes if self.classes is not None else list(self.rf_model.classes_)
+            prediction = classes_list[pred_idx]
+            confidence = float(probabilities[pred_idx])
         except Exception:
             return None
 
