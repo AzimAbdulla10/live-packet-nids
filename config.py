@@ -25,3 +25,8 @@ MODEL_PATH = os.path.join(MODEL_DIR, "nids_classifier.joblib")
 # ML Flow sliding window parameters
 FLOW_WINDOW = 3.0  # Aggregate flow statistics every 3 seconds per IP
 ANOMALY_THRESHOLD = -0.15  # Isolation Forest score cutoff for anomaly alert
+
+# Bidirectional Flow Tracking Parameters
+FLOW_IDLE_TIMEOUT = 15.0    # seconds before idle flow expires
+FLOW_ACTIVE_TIMEOUT = 120.0 # max lifetime in seconds of active continuous flow
+FLOW_MAX_TABLE_SIZE = 10000 # bounded memory table size for concurrent flows

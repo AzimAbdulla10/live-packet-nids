@@ -8,6 +8,7 @@ from config import (
 )
 from logger import log_alert, log_critical, log_ml_alert, log_anomaly_alert
 from ml_detector import MLDetector
+from flow_tracker import FlowTracker
 from database import db
 
 class Detector:
@@ -19,6 +20,9 @@ class Detector:
         # Cooldown trackers to avoid alert spamming
         self.last_port_scan_alert = {}
         self.last_syn_flood_alert = {}
+
+        # Bidirectional flow tracker
+        self.flow_tracker = FlowTracker()
 
         # Machine learning inference engine
         self.ml_detector = MLDetector()
@@ -33,7 +37,10 @@ class Detector:
             
         current_time = pkt_data.get("timestamp", time.time())
         
-        # 1. Rule-based signature analysis
+        # 1. Bidirectional flow tracking
+        self.flow_tracker.process_packet(pkt_data)
+
+        # 2. Rule-based signature analysis
         self._check_port_scan(src_ip, pkt_data, current_time)
         self._check_syn_flood(src_ip, pkt_data, current_time)
 
