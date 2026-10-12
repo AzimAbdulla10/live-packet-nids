@@ -4,9 +4,10 @@ import random
 from scapy.all import IP, TCP, UDP, send
 from config import INTERFACE
 
-def generate_normal_traffic():
+def generate_normal_traffic(count: int = None):
     print(f"\n[INFO] Generating normal traffic on interface {INTERFACE}...")
     target_ip = "127.0.0.1"
+    total_packets = count if (count and count > 0) else 15
     protocols = [
         ("TCP", 80, "S"),
         ("TCP", 443, "A"),
@@ -16,7 +17,7 @@ def generate_normal_traffic():
     ]
     
     try:
-        for i in range(15):
+        for i in range(total_packets):
             proto, port, flags = random.choice(protocols)
             sport = random.randint(49152, 65535)
             
@@ -26,8 +27,8 @@ def generate_normal_traffic():
                 pkt = IP(src=target_ip, dst=target_ip)/UDP(sport=sport, dport=port)
             
             send(pkt, iface=INTERFACE, verbose=0)
-            print(f"Sent normal packet {i+1}/15: {proto} to port {port}")
-            time.sleep(random.uniform(0.1, 0.4))
+            print(f"Sent normal packet {i+1}/{total_packets}: {proto} to port {port}")
+            time.sleep(random.uniform(0.05, 0.2))
             
         print("[INFO] Normal traffic generation completed.")
     except PermissionError:
@@ -36,11 +37,12 @@ def generate_normal_traffic():
     except Exception as e:
         print(f"\n[ERROR] Simulation failed: {e}")
 
-def simulate_port_scan():
+def simulate_port_scan(count: int = None):
     print(f"\n[INFO] Simulating port scan on interface {INTERFACE}...")
     target_ip = "127.0.0.1"
     start_port = 20
-    end_port = 45
+    num_ports = count if (count and count > 0) else 26
+    end_port = start_port + num_ports - 1
     
     try:
         sport = random.randint(49152, 65535)
@@ -57,10 +59,10 @@ def simulate_port_scan():
     except Exception as e:
         print(f"\n[ERROR] Simulation failed: {e}")
 
-def simulate_syn_flood():
+def simulate_syn_flood(count: int = None):
     print(f"\n[INFO] Simulating SYN flood on interface {INTERFACE}...")
     target_ip = "127.0.0.1"
-    packet_count = 120
+    packet_count = count if (count and count > 0) else 120
     
     try:
         for i in range(packet_count):
@@ -78,10 +80,10 @@ def simulate_syn_flood():
     except Exception as e:
         print(f"\n[ERROR] Simulation failed: {e}")
 
-def simulate_ddos():
+def simulate_ddos(count: int = None):
     print(f"\n[INFO] Simulating DDoS flood on interface {INTERFACE} (testing ML classifier)...")
     target_ip = "127.0.0.1"
-    packet_count = 150
+    packet_count = count if (count and count > 0) else 150
     try:
         for i in range(packet_count):
             sport = random.randint(1024, 65535)
@@ -98,12 +100,13 @@ def simulate_ddos():
     except Exception as e:
         print(f"\n[ERROR] Simulation failed: {e}")
 
-def simulate_anomaly():
+def simulate_anomaly(count: int = None):
     print(f"\n[INFO] Simulating zero-day anomaly traffic on interface {INTERFACE}...")
     target_ip = "127.0.0.1"
+    packet_count = count if (count and count > 0) else 30
     try:
         # High entropy packet sizes to exotic unassigned high ports
-        for i in range(30):
+        for i in range(packet_count):
             exotic_port = random.randint(32000, 48000)
             pkt = IP(src=target_ip, dst=target_ip)/TCP(sport=exotic_port, dport=exotic_port, flags="SEC")
             send(pkt, iface=INTERFACE, verbose=0)
@@ -203,41 +206,46 @@ def generate_mock_packets(attack_type: str, count: int = None, base_time: float 
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="NIDS Traffic Simulator")
-    parser.add_argument("--attack", choices=["normal", "portscan", "synflood", "ddos", "anomaly", "all"],
+    parser.add_argument("--attack", "--type", dest="attack",
+                        choices=["normal", "portscan", "port_scan", "synflood", "syn_flood", "ddos", "anomaly", "all"],
                         help="Specific attack type to simulate")
+    parser.add_argument("--count", type=int, default=None,
+                        help="Number of packets to simulate (optional)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Generate mock packets without transmitting on raw socket")
     args = parser.parse_args()
 
+    attack_norm = args.attack.lower().replace("_", "") if args.attack else None
+
     if args.dry_run:
-        attack = args.attack or "normal"
-        pkts = generate_mock_packets(attack)
+        attack = attack_norm or "normal"
+        pkts = generate_mock_packets(attack, count=args.count)
         print(f"[INFO] Dry-run generated {len(pkts)} mock packets for '{attack}'.")
         for p in pkts[:5]:
             print(" ", p)
         return
 
-    if args.attack:
-        if args.attack == "normal":
-            generate_normal_traffic()
-        elif args.attack == "portscan":
-            simulate_port_scan()
-        elif args.attack == "synflood":
-            simulate_syn_flood()
-        elif args.attack == "ddos":
-            simulate_ddos()
-        elif args.attack == "anomaly":
-            simulate_anomaly()
-        elif args.attack == "all":
-            generate_normal_traffic()
+    if attack_norm:
+        if attack_norm == "normal":
+            generate_normal_traffic(count=args.count)
+        elif attack_norm == "portscan":
+            simulate_port_scan(count=args.count)
+        elif attack_norm == "synflood":
+            simulate_syn_flood(count=args.count)
+        elif attack_norm == "ddos":
+            simulate_ddos(count=args.count)
+        elif attack_norm == "anomaly":
+            simulate_anomaly(count=args.count)
+        elif attack_norm == "all":
+            generate_normal_traffic(count=args.count)
             time.sleep(1)
-            simulate_port_scan()
+            simulate_port_scan(count=args.count)
             time.sleep(1)
-            simulate_syn_flood()
+            simulate_syn_flood(count=args.count)
             time.sleep(1)
-            simulate_ddos()
+            simulate_ddos(count=args.count)
             time.sleep(1)
-            simulate_anomaly()
+            simulate_anomaly(count=args.count)
         return
 
     print("==================================================")
