@@ -10,6 +10,8 @@ class PacketCapture:
         self.callback = callback
         self._buffer = []
         self._last_flush = time.time()
+        self._error_count = 0
+        self._last_error_log = 0.0
 
     def _packet_handler(self, packet):
         try:
@@ -17,18 +19,33 @@ class PacketCapture:
             if features:
                 log_packet(features)
                 
-                # Buffer for efficient database persistence
+                # Batch buffer for database persistence
                 self._buffer.append(features)
                 now = time.time()
                 if len(self._buffer) >= 20 or (now - self._last_flush >= 1.0):
-                    db.insert_packets_batch(self._buffer)
+                    try:
+                        db.insert_packets_batch(self._buffer)
+                    except Exception as db_err:
+                        self._log_error(f"Database insertion failed: {db_err}")
                     self._buffer.clear()
                     self._last_flush = now
 
-                # Execute detection logic
-                self.callback(features)
-        except Exception:
-            pass
+                # Execute detection callback
+                try:
+                    self.callback(features)
+                except Exception as cb_err:
+                    self._log_error(f"Detection callback failed: {cb_err}")
+
+        except Exception as err:
+            self._log_error(f"Packet parsing failed: {err}")
+
+    def _log_error(self, message: str):
+        self._error_count += 1
+        now = time.time()
+        # Rate-limit error logging to at most once every 5 seconds to prevent console flooding
+        if now - self._last_error_log >= 5.0:
+            log_info(f"[WARN] {message} (Total suppressed errors: {self._error_count})")
+            self._last_error_log = now
 
     def start(self):
         import platform
@@ -51,5 +68,8 @@ class PacketCapture:
             print("Make sure the interface is correct and Scapy is installed with correct permissions.\n")
         finally:
             if self._buffer:
-                db.insert_packets_batch(self._buffer)
+                try:
+                    db.insert_packets_batch(self._buffer)
+                except Exception as e:
+                    self._log_error(f"Final flush to database failed: {e}")
                 self._buffer.clear()

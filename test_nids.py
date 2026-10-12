@@ -81,6 +81,16 @@ def test_full_pipeline():
     report_text = generate_text_summary()
     assert "NETWORK INTRUSION DETECTION SYSTEM - AUDIT REPORT" in report_text
     print("\n[SUCCESS] All pipeline tests passed! Database, Rules, ML, and Reports verified.\n")
-
 if __name__ == "__main__":
     test_full_pipeline()
+    
+    print("\n==================================================")
+    print("   Running Automated Backend Unit Tests           ")
+    print("==================================================")
+    import unittest
+    loader = unittest.TestLoader()
+    suite = loader.discover("tests")
+    runner = unittest.TextTestRunner(verbosity=2)
+    result = runner.run(suite)
+    if not result.wasSuccessful():
+        exit(1)
