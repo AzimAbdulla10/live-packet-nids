@@ -199,19 +199,22 @@ class Flow:
     @property
     def flow_bytes_per_sec(self) -> float:
         """Flow throughput in Bytes per second."""
-        dur = max(self.duration, 1e-6)
-        return self.total_bytes / dur
+        if self.duration <= 0.0:
+            return 0.0
+        return self.total_bytes / self.duration
 
     @property
     def flow_packets_per_sec(self) -> float:
         """Flow throughput in Packets per second."""
-        dur = max(self.duration, 1e-6)
-        return self.total_packets / dur
+        if self.duration <= 0.0:
+            return 0.0
+        return self.total_packets / self.duration
 
     @property
     def fwd_packets_per_sec(self) -> float:
-        dur = max(self.duration, 1e-6)
-        return self.fwd_packets / dur
+        if self.duration <= 0.0:
+            return 0.0
+        return self.fwd_packets / self.duration
 
     @property
     def bwd_packets_per_sec(self) -> float:
@@ -380,7 +383,7 @@ class Flow:
             "Fwd Packet Length Mean": self.fwd_len_stats.mean,
             "Flow Bytes/s": self.flow_bytes_per_sec,
             "Flow Packets/s": self.flow_packets_per_sec,
-            "SYN Flag Count": self.syn_count,
+            "SYN Flag Count": 1 if self.syn_count > 0 else 0,
             "Average Packet Size": avg_pkt_size
         }
 

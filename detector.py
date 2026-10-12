@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import Tuple
 import time
 from config import (
     PORT_SCAN_THRESHOLD,
@@ -38,22 +39,39 @@ class Detector:
         current_time = pkt_data.get("timestamp", time.time())
         
         # 1. Bidirectional flow tracking
-        self.flow_tracker.process_packet(pkt_data)
+        flow, expired_flows = self.flow_tracker.process_packet(pkt_data)
 
         # 2. Rule-based signature analysis
         self._check_port_scan(src_ip, pkt_data, current_time)
         self._check_syn_flood(src_ip, pkt_data, current_time)
 
-        # 2. Machine Learning flow classification & anomaly detection
-        ml_result = self.ml_detector.process_packet(pkt_data)
-        if ml_result:
-            threat_name, score, details = ml_result
-            if threat_name == "Anomaly":
-                log_anomaly_alert(src_ip, score, details)
-                db.insert_alert("Zero-Day Anomaly", "MEDIUM", "ML", src_ip, details)
-            else:
-                log_ml_alert(threat_name, src_ip, score, details)
-                db.insert_alert(f"ML-{threat_name}", "HIGH", "ML", src_ip, details)
+        # 3. Machine Learning inference on finalized/expired flows
+        for exp_flow in expired_flows:
+            ml_result = self.ml_detector.evaluate_flow(exp_flow, is_final=True)
+            if ml_result:
+                self._handle_ml_alert(exp_flow.initiator_ip, ml_result)
+
+        # 4. Machine Learning inference on active ongoing flow
+        if flow:
+            ml_result = self.ml_detector.evaluate_flow(flow, is_final=False)
+            if ml_result:
+                self._handle_ml_alert(flow.initiator_ip, ml_result)
+
+    def _handle_ml_alert(self, src_ip: str, ml_result: Tuple[str, float, str]):
+        threat_name, score, details = ml_result
+        if threat_name == "Anomaly":
+            log_anomaly_alert(src_ip, score, details)
+            db.insert_alert("Zero-Day Anomaly", "MEDIUM", "ML", src_ip, details)
+        else:
+            log_ml_alert(threat_name, src_ip, score, details)
+            db.insert_alert(f"ML-{threat_name}", "HIGH", "ML", src_ip, details)
+
+    def finalize_flows(self):
+        """Finalizes and evaluates any remaining active flows (e.g. on shutdown)."""
+        for flow in list(self.flow_tracker.active_flows.values()):
+            ml_result = self.ml_detector.evaluate_flow(flow, is_final=True)
+            if ml_result:
+                self._handle_ml_alert(flow.initiator_ip, ml_result)
 
     def _check_port_scan(self, src_ip: str, pkt_data: dict, current_time: float):
         dst_port = pkt_data.get("dst_port")
