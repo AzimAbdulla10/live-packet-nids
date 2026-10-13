@@ -1,3 +1,6 @@
+import os
+os.environ["ARROW_DEFAULT_MEMORY_POOL"] = "system"
+
 import time
 from datetime import datetime
 import pandas as pd
