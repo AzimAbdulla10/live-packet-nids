@@ -124,14 +124,15 @@ if recent_alerts:
         "details": "Details"
     })
 
-    def highlight_rule_threats(row):
+    def highlight_threats(row):
+        severity = str(row.get("Severity", "")).upper()
         is_rule = str(row.get("Engine", "")).upper() == "RULE"
         alert_name = str(row.get("Alert Type", "")).lower()
-        if is_rule or "port scan" in alert_name or "syn flood" in alert_name:
+        if severity in ("HIGH", "CRITICAL") or is_rule or "port scan" in alert_name or "syn flood" in alert_name:
             return ["color: #dc3545; font-weight: 600; background-color: rgba(220, 53, 69, 0.12);"] * len(row)
         return [""] * len(row)
 
-    styled_alerts = df_display.style.apply(highlight_rule_threats, axis=1)
+    styled_alerts = df_display.style.apply(highlight_threats, axis=1)
 
     st.dataframe(
         styled_alerts,
