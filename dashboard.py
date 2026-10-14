@@ -126,10 +126,13 @@ if recent_alerts:
 
     def highlight_threats(row):
         severity = str(row.get("Severity", "")).upper()
-        is_rule = str(row.get("Engine", "")).upper() == "RULE"
+        engine = str(row.get("Engine", "")).upper()
+        is_rule = engine == "RULE"
         alert_name = str(row.get("Alert Type", "")).lower()
-        if severity in ("HIGH", "CRITICAL") or is_rule or "port scan" in alert_name or "syn flood" in alert_name:
+        if severity in ("HIGH", "CRITICAL") or is_rule or "port scan" in alert_name or "syn flood" in alert_name or "ddos" in alert_name:
             return ["color: #dc3545; font-weight: 600; background-color: rgba(220, 53, 69, 0.12);"] * len(row)
+        elif engine == "ANOMALY" or severity == "MEDIUM":
+            return ["color: #f59e0b; font-weight: 600; background-color: rgba(245, 158, 11, 0.08);"] * len(row)
         return [""] * len(row)
 
     styled_alerts = df_display.style.apply(highlight_threats, axis=1)

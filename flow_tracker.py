@@ -264,7 +264,7 @@ class Flow:
         Incrementally updates flow state and statistics with a new packet.
         """
         curr_time = float(pkt.get("timestamp", time.time()))
-        pkt_len = int(pkt.get("length", 0))
+        pkt_len = int(pkt.get("payload_length") if "payload_length" in pkt and pkt["payload_length"] is not None else pkt.get("length", 0))
         is_fwd = self.is_forward(pkt)
 
         # 1. Inter-arrival time calculations

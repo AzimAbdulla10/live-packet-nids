@@ -51,6 +51,7 @@ class FeatureExtractor:
                 "src_port": None,
                 "dst_port": None,
                 "flags": "",
+                "payload_length": 0,
                 "icmp_type": None,
                 "icmp_code": None
             }
@@ -61,6 +62,10 @@ class FeatureExtractor:
                 features["protocol"] = "TCP"
                 features["src_port"] = int(tcp_layer.sport)
                 features["dst_port"] = int(tcp_layer.dport)
+                try:
+                    features["payload_length"] = len(tcp_layer.payload) if tcp_layer.payload else 0
+                except Exception:
+                    features["payload_length"] = 0
 
                 # Bitmask TCP flag evaluation
                 try:
