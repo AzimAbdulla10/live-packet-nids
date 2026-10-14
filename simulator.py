@@ -83,20 +83,21 @@ def simulate_syn_flood(count: int = None):
 def simulate_ddos(count: int = None):
     print(f"\n[INFO] Simulating DDoS flood on interface {INTERFACE} (testing Random Forest ML)...")
     target_ip = "127.0.0.1"
-    packet_count = count if (count and count > 0) else 12
-    sport = 30000
-    dport = 80
+    num_streams = (count // 5) if (count and count >= 5) else 2
     try:
-        # Use consistent bidirectional stream (sport=30000 -> dport=80) matching CIC-IDS2017 Slowloris/DDoS.
-        # Fixed ports ensure this will NEVER trigger the Port Scan or SYN Flood rule!
-        for i in range(packet_count):
-            pkt = IP(src=target_ip, dst=target_ip)/TCP(sport=sport, dport=dport, flags="A")/(b"A" * 6)
-            send(pkt, iface=INTERFACE, verbose=0)
-            if (i + 1) % 4 == 0:
-                resp = IP(src=target_ip, dst=target_ip)/TCP(sport=dport, dport=sport, flags="A")/(b"R" * 1000)
-                send(resp, iface=INTERFACE, verbose=0)
-                print(f"Sent {i+1}/{packet_count} DDoS stream packets...")
-            time.sleep(0.08)
+        # Generate Slowloris streams of 5 packets + 1 response packet each
+        # This matches the CIC-IDS2017 Slowloris profile (83% DDoS confidence)
+        for s in range(num_streams):
+            sport = 30000 + s
+            dport = 80
+            for i in range(5):
+                pkt = IP(src=target_ip, dst=target_ip)/TCP(sport=sport, dport=dport, flags="A")/(b"A" * 6)
+                send(pkt, iface=INTERFACE, verbose=0)
+                time.sleep(0.1)
+            resp = IP(src=target_ip, dst=target_ip)/TCP(sport=dport, dport=sport, flags="A")/(b"R" * 1000)
+            send(resp, iface=INTERFACE, verbose=0)
+            print(f"Sent DDoS stream {s+1}/{num_streams}...")
+            time.sleep(0.2)
         print("[INFO] DDoS flood simulation completed.")
     except PermissionError:
         print("\n[ERROR] Permission denied. Sending raw packets requires root privileges.")
@@ -107,20 +108,23 @@ def simulate_ddos(count: int = None):
 def simulate_anomaly(count: int = None):
     print(f"\n[INFO] Simulating zero-day anomaly traffic on interface {INTERFACE}...")
     target_ip = "127.0.0.1"
-    packet_count = count if (count and count > 0) else 30
+    packet_count = count if (count and count > 0) else 25
     try:
-        # Send packets to a SINGLE exotic high port (31337) with unusual flags and larger payload
+        # Send packets to a SINGLE exotic high port (31337) with unusual flags and 1400-byte payload
         # Using a single destination port prevents triggering the Rule-Based Port Scan detector!
         sport = 9999
         dport = 31337
-        payload = b"X" * 1200
+        payload = b"X" * 1400
         for i in range(packet_count):
             pkt = IP(src=target_ip, dst=target_ip)/TCP(sport=sport, dport=dport, flags="PU")/payload
             send(pkt, iface=INTERFACE, verbose=0)
             if (i + 1) % 10 == 0:
                 print(f"Sent {i+1}/{packet_count} exotic anomaly packets...")
-            time.sleep(0.01)
+            time.sleep(0.02)
         print("[INFO] Anomaly simulation completed.")
+    except PermissionError:
+        print("\n[ERROR] Permission denied. Sending raw packets requires root privileges.")
+        print("Please run with: 'sudo python simulator.py'\n")
     except Exception as e:
         print(f"\n[ERROR] Simulation failed: {e}")
 
