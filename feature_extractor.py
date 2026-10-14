@@ -115,6 +115,10 @@ class FeatureExtractor:
                         features["icmp_code"] = int(getattr(icmp6_layer, "code", 0))
                         break
 
+            # Exclude monitoring dashboard's own port (8501) to prevent self-monitoring noise
+            if features.get("src_port") == 8501 or features.get("dst_port") == 8501:
+                return None
+
             return features
 
         except Exception:
