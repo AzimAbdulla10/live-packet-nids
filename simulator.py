@@ -105,12 +105,17 @@ def simulate_anomaly(count: int = None):
     target_ip = "127.0.0.1"
     packet_count = count if (count and count > 0) else 30
     try:
-        # High entropy packet sizes to exotic unassigned high ports
+        # Send packets to a SINGLE exotic high port (31337) with unusual flags and larger payload
+        # Using a single destination port prevents triggering the Rule-Based Port Scan detector!
+        sport = 9999
+        dport = 31337
+        payload = b"X" * 1200
         for i in range(packet_count):
-            exotic_port = random.randint(32000, 48000)
-            pkt = IP(src=target_ip, dst=target_ip)/TCP(sport=exotic_port, dport=exotic_port, flags="SEC")
+            pkt = IP(src=target_ip, dst=target_ip)/TCP(sport=sport, dport=dport, flags="PU")/payload
             send(pkt, iface=INTERFACE, verbose=0)
-            time.sleep(0.02)
+            if (i + 1) % 10 == 0:
+                print(f"Sent {i+1}/{packet_count} exotic anomaly packets...")
+            time.sleep(0.01)
         print("[INFO] Anomaly simulation completed.")
     except Exception as e:
         print(f"\n[ERROR] Simulation failed: {e}")
