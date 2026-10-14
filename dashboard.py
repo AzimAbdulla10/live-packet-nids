@@ -116,14 +116,25 @@ if recent_alerts:
         df_alerts = df_alerts[df_alerts["engine"] == filter_engine]
 
     display_cols = ["Time", "engine", "severity", "alert_type", "src_ip", "details"]
+    df_display = df_alerts[display_cols].rename(columns={
+        "engine": "Engine",
+        "severity": "Severity",
+        "alert_type": "Alert Type",
+        "src_ip": "Source IP",
+        "details": "Details"
+    })
+
+    def highlight_rule_threats(row):
+        is_rule = str(row.get("Engine", "")).upper() == "RULE"
+        alert_name = str(row.get("Alert Type", "")).lower()
+        if is_rule or "port scan" in alert_name or "syn flood" in alert_name:
+            return ["color: #dc3545; font-weight: 600; background-color: rgba(220, 53, 69, 0.12);"] * len(row)
+        return [""] * len(row)
+
+    styled_alerts = df_display.style.apply(highlight_rule_threats, axis=1)
+
     st.dataframe(
-        df_alerts[display_cols].rename(columns={
-            "engine": "Engine",
-            "severity": "Severity",
-            "alert_type": "Alert Type",
-            "src_ip": "Source IP",
-            "details": "Details"
-        }),
+        styled_alerts,
         use_container_width=True,
         height=300
     )
