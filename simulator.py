@@ -81,22 +81,26 @@ def simulate_syn_flood(count: int = None):
         print(f"\n[ERROR] Simulation failed: {e}")
 
 def simulate_ddos(count: int = None):
-    print(f"\n[INFO] Simulating DDoS flood on interface {INTERFACE} (testing ML classifier)...")
+    print(f"\n[INFO] Simulating DDoS flood on interface {INTERFACE} (testing Random Forest ML)...")
     target_ip = "127.0.0.1"
-    packet_count = count if (count and count > 0) else 150
+    packet_count = count if (count and count > 0) else 12
+    sport = 30000
+    dport = 80
     try:
+        # Use consistent bidirectional stream (sport=30000 -> dport=80) matching CIC-IDS2017 Slowloris/DDoS.
+        # Fixed ports ensure this will NEVER trigger the Port Scan or SYN Flood rule!
         for i in range(packet_count):
-            sport = random.randint(1024, 65535)
-            # Mixed TCP/UDP flood to port 80/443
-            if i % 2 == 0:
-                pkt = IP(src=target_ip, dst=target_ip)/TCP(sport=sport, dport=80, flags="S")
-            else:
-                pkt = IP(src=target_ip, dst=target_ip)/UDP(sport=sport, dport=443)
+            pkt = IP(src=target_ip, dst=target_ip)/TCP(sport=sport, dport=dport, flags="A")/(b"A" * 6)
             send(pkt, iface=INTERFACE, verbose=0)
-            if (i + 1) % 30 == 0:
-                print(f"Sent {i+1}/{packet_count} DDoS flood packets...")
-            time.sleep(0.003)
+            if (i + 1) % 4 == 0:
+                resp = IP(src=target_ip, dst=target_ip)/TCP(sport=dport, dport=sport, flags="A")/(b"R" * 1000)
+                send(resp, iface=INTERFACE, verbose=0)
+                print(f"Sent {i+1}/{packet_count} DDoS stream packets...")
+            time.sleep(0.08)
         print("[INFO] DDoS flood simulation completed.")
+    except PermissionError:
+        print("\n[ERROR] Permission denied. Sending raw packets requires root privileges.")
+        print("Please run with: 'sudo python simulator.py'\n")
     except Exception as e:
         print(f"\n[ERROR] Simulation failed: {e}")
 
