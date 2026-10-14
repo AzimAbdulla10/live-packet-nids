@@ -116,8 +116,15 @@ class FeatureExtractor:
                         break
 
             # Exclude monitoring dashboard's own port (8501) to prevent self-monitoring noise
-            if features.get("src_port") == 8501 or features.get("dst_port") == 8501:
+            sp = features.get("src_port")
+            dp = features.get("dst_port")
+            if sp == 8501 or dp == 8501:
                 return None
+
+            # Filter internal loopback OS IPC (e.g. IDE language servers communicating on ephemeral ports >= 50000)
+            if features.get("src_ip") in ("127.0.0.1", "::1") and features.get("dst_ip") in ("127.0.0.1", "::1"):
+                if sp and dp and sp >= 50000 and dp >= 50000:
+                    return None
 
             return features
 
